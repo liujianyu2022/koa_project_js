@@ -1,6 +1,9 @@
-const bcrypt = require("bcryptjs")
+const bcrypt = require("bcryptjs")      //用于密码加密
+const jwt = require("jsonwebtoken")
 const { getUserInfo } = require("../service/userService")
-const { userFormatError, userExistAlready, userRegisterError } = require("../constant/errorType")
+const {JWT_SECRET} = require("../config/config.default")
+const { userFormatError, userExistAlready, userRegisterError, userNotExisted, userLoginError, invalidPassword } = require("../constant/errorType")
+
 async function userValidator(ctx, next) {       //验证格式
     let { user_name, password } = ctx.request.body
 
@@ -57,7 +60,46 @@ async function cryptPassword(ctx, next) {
     let { password } = ctx.request.body
     var salt = bcrypt.genSaltSync(10);      //加盐
     var hash = bcrypt.hashSync(password, salt);     //hash保存的就是密文
+    console.log("hash--",hash)
     ctx.request.body.password = hash        //密文覆盖明文
+
+    await next()
+}
+
+//先去查找有没有这个用户， 然后再比较密码
+async function verifyLogin(ctx, next){
+
+    let {user_name} = ctx.request.body
+    
+    try{
+        let res = await getUserInfo({user_name})
+
+        if(!res){       //用户不存在
+            ctx.app.emit("error", userNotExisted, ctx)
+            return
+        }
+
+        //密码匹配不上
+        if(!bcrypt.compareSync(password, res.password)){        //第一个参数是指输入的password 第二个是指数据库中加密过的密码
+            ctx.app.emit("error", invalidPassword, ctx)
+            return
+        }
+        console.log("颁发token---")
+        //颁发token
+        // let {password, ...infoForToken} = res
+        // ctx.response.body = {
+        //     code: 0,
+        //     message:"login successfully",
+        //     result:{
+        //         token: jwt.sign(infoForToken, JWT_SECRET, {expiresIn: "1d"})       //payload 私钥  过期时间
+        //     }
+        // }
+
+    }catch(error){
+        ctx.app.emit("error", userLoginError, ctx)
+        return 
+    }
+
 
     await next()
 }
@@ -65,6 +107,7 @@ async function cryptPassword(ctx, next) {
 module.exports = {
     userValidator,
     verifyUser,
-    cryptPassword
+    cryptPassword,
+    verifyLogin
 }
 

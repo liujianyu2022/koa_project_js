@@ -1,3 +1,4 @@
+
 let { createUser, getUserInfo, userRegisterError } = require("../service/userService")
 
 class UserController {
@@ -49,8 +50,9 @@ class UserController {
     }
 
     async login(ctx, next) {
-        let {user_name, password} = ctx.request.body
         
+        let {user_name, password} = ctx.request.body
+ 
         ctx.response.body = "login successfully"
     }
 
